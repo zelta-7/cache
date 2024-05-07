@@ -1,0 +1,259 @@
+openapi: "3.1.0"
+info:
+  version: "1.0"
+  title: Cache API server
+  description: API server that lets you interact with the cache
+
+servers:
+  - url: http://localhost:8000
+
+paths:
+    /cache:
+      post:
+        summary: Add an entry to the cache
+        requestBody:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheEntry'
+        responses:
+          '200':
+            description: Entry added to the cache
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/CacheEntryResponse'
+          '400':
+            description: Invalid input
+          '409':
+            description: Entry already exists
+          '5XX':
+            description: Internal server error  
+
+    /cache/{time-to-live}:
+      post: 
+        summary: Post an entry with expiration time
+        parameters:
+          - name: time-to-live
+            in: path
+            required: true
+            schema:
+              type: integer
+        requestBody:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheEntry'
+        responses:
+          '200':
+            description: Entry added to the cache
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/CacheEntryResponse'
+          '400':
+            description: Invalid input
+          '409':
+            description: Entry already exists
+          '5XX':
+            description: Internal server error
+
+    /cache/{key}:
+      put:
+        summary: Update an entry in cache
+        parameters:
+          - name: key
+            in: path
+            required: true
+            schema:
+              type: string
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  new-val:
+                    type: string
+                  time-to-live:
+                    type: integer
+        responses:
+          '200':
+            description: Entry updated
+          '400':
+            description: Invalid input
+          '404':
+            description: Entry not found
+          '5XX':
+            description: Internal server error
+
+      get:
+        summary: Get an entry from the cache
+        parameters:
+          - name: key
+            in: path
+            required: true
+            schema:
+              type: string
+        responses:
+          '200':
+            description: Entry found
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/GetEntry'
+          '404':
+            description: Entry not found
+          '5XX':
+            description: Internal server error
+
+    /cache/list/{n-entries}:
+      get:
+        summary: Get a list of n entries from the cache 
+        parameters:
+          - name: n-entries
+            in: path
+            required: true
+            schema:
+              type: integer
+        responses:
+          '200':
+            description: List of entries
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CacheEntry' 
+          '404':
+            description: No entries found
+          '5XX':
+            description: Internal server error
+      
+    /cache/entries:
+      get:
+        summary: Get value for list of keys
+        parameters:
+          - name: key
+            in: query
+            description: List of keys
+            required: true
+            schema:
+              type: array
+              items:
+                type: string
+        responses:
+          '200':
+            description: List of entries
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/GetEntryList'
+          '404':
+            description: No entries found
+          '5XX':
+            description: Internal server error
+
+    /cache/metadata:
+      get:
+        summary: Get metadata for all entries in cache
+        responses:
+          '200':
+            description: Metadata for all entries
+            content:
+              application/json:
+                schema:
+                    $ref: '#/components/schemas/GetEntryList'
+          '404':
+            description: No entries found
+          '5XX':
+            description: Internal server error
+
+    /cache/metadata/{key}:
+      get:
+        summary: Get metadata for specific entry in cache
+        parameters:
+          - name: key
+            in: path
+            required: true
+            schema:
+              type: string
+        responses:
+          '200':
+            description: Metadata for the given key
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/CacheEntry'
+          '404':
+            description: Entry not found
+          '5XX':
+            description: Internal server error
+
+    /cache/list/{sort}/{n}:
+      get:
+        summary: Get n sorted entries 
+        parameters:
+          - name: sort
+            in: path
+            required: true
+            schema:
+              type: string
+              enum: [asc, desc]
+          - name: n
+            in: path
+            required: true
+            schema:
+              type: integer
+        responses:
+          '200':
+            description: List of sorted entries
+            content:
+              application/json:
+                schema:
+                    $ref: '#/components/schemas/GetEntryList'
+          '404':
+            description: No entries found
+          '5XX':
+            description: Internal server error
+
+components:
+  schemas:
+    CacheEntry:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+        time-to-live:
+          type: integer
+      required:
+        - key
+        - value
+      
+    CacheEntryResponse:
+      type: object
+      properties:
+        hkey:
+          type: integer
+
+    GetEntry:
+      type: object
+      properties:
+        value:
+          type: string
+      required:
+        - value
+
+    GetEntryList:
+          type: object
+          properties:
+            entries:
+             type: array
+             items:
+                $ref: '#/components/schemas/CacheEntry'
+          required:
+            - entries
+     
