@@ -9,20 +9,28 @@ import (
 type MapServiceInterface interface {
 	// Set sets the value of the key
 	Set(key, value string)
+
 	// Get returns the value of the key
 	Get(key string) string
+
 	// All returns all the entries in the map
 	All() map[string]string
+
 	// GetEntryList returns the first n entries in the map
 	GetEntryList(n int) map[string]string
+
 	// GetSortedEntryList returns the first n entries in the map sorted by value
 	GetSortedEntryList(n int) map[string]string
+
 	// GetCacheMetadata returns the type of the value stored in the key
 	GetCacheMetadata(key string) string
+
 	// GetCacheMetadataAll returns the type of all the values stored in the map
 	GetCacheMetadataAll() []string
+
 	// UpdateCacheEntry updates the value of the key
 	UpdateCacheEntry(key, value string)
+
 	// GetListofValues returns the array of values for the given keys
 	GetListofValues(keys []string) []string
 }

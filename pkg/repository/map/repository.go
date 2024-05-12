@@ -5,10 +5,12 @@ import (
 )
 
 type MapRepoInter interface {
-	// Get returns the value of the key
-	Get(key string) string
 	// Set sets the value of the key
 	Set(key, value string)
+
+	// Get returns the value of the key
+	Get(key string) string
+
 	// All return all the entries in the map
 	All() map[string]string
 }
@@ -25,26 +27,26 @@ func NewMapRepo() MapRepoInter {
 	}
 }
 
-// Get implements the Get method of the MapRepoInter interface
-func (m *MapRepo) Get(key string) string {
-	m.lock.Lock()
-	defer m.lock.Lock()
-
-	return m.MapCache[key]
-}
-
 // Set implements the Set method of the MapRepoInter interface
 func (m *MapRepo) Set(key, value string) {
 	m.lock.Lock()
-	defer m.lock.Lock()
+	defer m.lock.Unlock()
 
 	m.MapCache[key] = value
+}
+
+// Get implements the Get method of the MapRepoInter interface
+func (m *MapRepo) Get(key string) string {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	return m.MapCache[key]
 }
 
 // All implements the GetEntryList method of the MapRepoInter interface
 func (m *MapRepo) All() map[string]string {
 	m.lock.Lock()
-	defer m.lock.Lock()
+	defer m.lock.Unlock()
 
 	return m.MapCache
 }
