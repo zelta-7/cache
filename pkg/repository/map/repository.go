@@ -11,6 +11,9 @@ type MapRepoInter interface {
 	// Get returns the value of the key
 	Get(key string) string
 
+	// UpdateValue updates the value of the key
+	UpdateValue(key, newValue string) string
+
 	// All return all the entries in the map
 	All() map[string]string
 }
@@ -43,6 +46,15 @@ func (m *MapRepo) Get(key string) string {
 	return m.MapCache[key]
 }
 
+// UpdateValue implements the UpdateValue method of the MapRepoInter interface
+func (m *MapRepo) UpdateValue(key, newValue string) string {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	m.MapCache[key] = newValue
+	return key
+}
+
 // All implements the GetEntryList method of the MapRepoInter interface
 func (m *MapRepo) All() map[string]string {
 	m.lock.Lock()
@@ -50,16 +62,3 @@ func (m *MapRepo) All() map[string]string {
 
 	return m.MapCache
 }
-
-// In Go:
-// There are two fundamental types
-// 1. Concrete types
-// 	- struct
-// 	- int
-// 	- string
-// 	- float64
-// 	- Anything that has a memory representation
-
-// 2. Abstract types
-// 	- interface
-// 	- Interfaces are implemented by concrete types

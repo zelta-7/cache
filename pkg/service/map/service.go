@@ -1,14 +1,14 @@
 package service
 
 import (
-	"reflect"
-
+	"github.com/zelta-7/cache/common"
 	repository "github.com/zelta-7/cache/pkg/repository/map"
+	"k8s.io/klog/v2"
 )
 
 type MapServiceInterface interface {
 	// Set sets the value of the key
-	Set(key, value string)
+	Set(key, value string) string
 
 	// Get returns the value of the key
 	Get(key string) string
@@ -20,16 +20,10 @@ type MapServiceInterface interface {
 	GetEntryList(n int) map[string]string
 
 	// GetSortedEntryList returns the first n entries in the map sorted by value
-	GetSortedEntryList(n int) map[string]string
-
-	// GetCacheMetadata returns the type of the value stored in the key
-	GetCacheMetadata(key string) string
-
-	// GetCacheMetadataAll returns the type of all the values stored in the map
-	GetCacheMetadataAll() []string
+	GetSortedEntryList(selector, n int) map[string]string
 
 	// UpdateCacheEntry updates the value of the key
-	UpdateCacheEntry(key, value string)
+	UpdateCacheEntry(key, value string) string
 
 	// GetListofValues returns the array of values for the given keys
 	GetListofValues(keys []string) []string
@@ -46,13 +40,16 @@ func NewMapService(mapRepoInterface repository.MapRepoInter) MapServiceInterface
 }
 
 // Set implements the Set method of the MapServiceInterface
-func (m *mapService) Set(key, value string) {
-	m.mapInterface.Set(key, value)
+func (m *mapService) Set(key, value string) string {
+	hashedKey := common.HashKey(key)
+	m.mapInterface.Set(hashedKey, value)
+	return key
 }
 
 // Get implements the Get method of the MapServiceInterface
 func (m *mapService) Get(key string) string {
-	return m.mapInterface.Get(key)
+	hashedKey := common.HashKey(key)
+	return m.mapInterface.Get(hashedKey)
 }
 
 // All implements the All method of the MapServiceInterface
@@ -63,7 +60,12 @@ func (m *mapService) All() map[string]string {
 // GetEntryList implements the GetEntryList method of the MapServiceInterface
 func (m *mapService) GetEntryList(n int) map[string]string {
 	entryList := make(map[string]string)
-	for key, value := range m.mapInterface.All() {
+	for hashedKey, value := range m.mapInterface.All() {
+		key, err := common.DecodeHashedKey(hashedKey)
+		if err != nil {
+			klog.ErrorS(err, "Error decoding hashed key", "key", hashedKey)
+			continue
+		}
 		entryList[key] = value
 		n--
 		if n == 0 {
@@ -72,47 +74,38 @@ func (m *mapService) GetEntryList(n int) map[string]string {
 	}
 	return entryList
 }
-
-// TODO: Update GetSortedEntryList for sorting by keys, add functionality as required
 
 // GetSortedEntryList implements the GetSortedEntryList method of the MapServiceInterface
-func (m *mapService) GetSortedEntryList(n int) map[string]string {
-	entryList := make(map[string]string)
-	for key, value := range m.mapInterface.All() {
-		entryList[key] = value
-		n--
-		if n == 0 {
-			break
-		}
+func (m *mapService) GetSortedEntryList(selector, n int) map[string]string {
+	if selector != 0 && selector != 1 {
+		klog.Warning("Invalid selector value")
+		return nil
 	}
-	// entryList = util.x(entryList)
-	return entryList
-}
-
-// GetCacheMetadata implemets the GetCacheMetadata method of the MapServiceInterface
-func (m *mapService) GetCacheMetadata(key string) string {
-	value := m.mapInterface.Get(key)
-	return reflect.TypeOf(value).String()
-}
-
-// GetCacheMetadataAll implements the GetCacheMetadataAll method of the MapServiceInterface
-func (m *mapService) GetCacheMetadataAll() []string {
-	metadata := make([]string, 0)
-	for key, value := range m.mapInterface.All() {
-		metadata = append(metadata, key+" : "+reflect.TypeOf(value).String())
+	if selector == 0 {
+		return repository.SortMapByValue(m.GetEntryList(n))
 	}
-	return metadata
+	if selector == 1 {
+		return repository.SortMapByKey(m.GetEntryList(n))
+	}
+	return nil
 }
 
 // UpdateCacheEntry implements the UpdateCacheEntry method of the MapServiceInterface
-func (m *mapService) UpdateCacheEntry(key, value string) {
-	m.mapInterface.Set(key, value)
+func (m *mapService) UpdateCacheEntry(key, value string) string {
+	hashedKey := common.HashKey(key)
+	m.mapInterface.UpdateValue(hashedKey, value)
+	return key
 }
 
 // GetListofValues implements the GetListofValues method of the MapServiceInterface
 func (m *mapService) GetListofValues(keys []string) []string {
 	values := make([]string, 0)
-	for _, key := range keys {
+	for _, hasedKey := range keys {
+		key, err := common.DecodeHashedKey(hasedKey)
+		if err != nil {
+			klog.ErrorS(err, "Error decoding hashed key", "key", hasedKey)
+			continue
+		}
 		values = append(values, m.mapInterface.Get(key))
 	}
 	return values
